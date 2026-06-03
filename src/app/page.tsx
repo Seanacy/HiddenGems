@@ -185,20 +185,6 @@ export default function HomePage() {
             ))}
           </div>
 
-          {/* Sort */}
-          <div className="flex gap-1">
-            {([["score", "Score"], ["area", "Size"], ["tax", "Tax"]] as const).map(([val, label]) => (
-              <button
-                key={val}
-                onClick={() => setSortBy(val)}
-                className={`flex-1 py-1 rounded text-[10px] font-medium transition-colors ${
-                  sortBy === val ? "bg-[#252833] text-white" : "text-[#555] hover:text-[#888]"
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
         </div>
 
         {/* List or Detail */}
