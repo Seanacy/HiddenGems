@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import mapboxgl from "mapbox-gl";
 import { supabase } from "@/lib/supabase";
 import { getScoreLabel, getPriorityLabel, getCountyTier, COUNTY_WEALTH } from "@/lib/scoring";
+import { estimateAcquisitionCost, formatCost } from "@/lib/acquisition";
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";
 const HENNEPIN_CENTER: [number, number] = [-93.35, 44.96];
@@ -47,7 +48,7 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true);
   const [scanning, setScanning] = useState(false);
   const [filter, setFilter] = useState<"all" | 1 | 2 | 3>("all");
-  const [sortBy, setSortBy] = useState<"score" | "area" | "tax">("score");
+  const [sortBy, setSortBy] = useState<"score" | "area" | "tax">("area");
   const [county, setCounty] = useState("Hennepin");
 
   // Load slivers from Supabase
@@ -273,10 +274,54 @@ export default function HomePage() {
                 )}
               </div>
 
+              {/* Estimated Acquisition Cost */}
+              <div className="border-t border-[#252833] pt-3 mb-4">
+                <h4 className="text-xs font-bold text-[#888] uppercase tracking-wider mb-2">Estimated Acquisition Cost</h4>
+                {(() => {
+                  const c = estimateAcquisitionCost(selected.market_value);
+                  return (
+                    <div className="bg-[#1a1d27] rounded-lg p-3">
+                      <div className="flex justify-between text-[10px] mb-1"><span className="text-[#888]">Market Value</span><span className="text-white">${c.basePrice.toLocaleString()}</span></div>
+                      <div className="flex justify-between text-[10px] mb-1"><span className="text-[#888]">State Surcharge (3%)</span><span className="text-white">${c.surcharge.toFixed(2)}</span></div>
+                      <div className="flex justify-between text-[10px] mb-1"><span className="text-[#888]">Deed Tax</span><span className="text-white">${c.deedTax.toFixed(2)}</span></div>
+                      <div className="flex justify-between text-[10px] mb-1"><span className="text-[#888]">Fees (deed + recording + conservation)</span><span className="text-white">${c.fees}</span></div>
+                      <div className="flex justify-between text-xs font-bold mt-2 pt-2 border-t border-[#252833]">
+                        <span className="text-[#22c55e]">Total Est. Cost</span>
+                        <span className="text-[#22c55e]">{formatCost(c.total)}</span>
+                      </div>
+                      {c.total > 0 && c.total < 500 && <div className="text-[9px] text-[#22c55e] mt-2 text-center bg-[#22c55e]/10 py-1 rounded">💎 Great deal — under $500</div>}
+                    </div>
+                  );
+                })()}
+              </div>
+
+              {/* County Contact */}
+              <div className="border-t border-[#252833] pt-3 mb-4">
+                <h4 className="text-xs font-bold text-[#888] uppercase tracking-wider mb-2">County Contact</h4>
+                <div className="bg-[#1a1d27] rounded-lg p-3">
+                  {selected.county === "Hennepin" ? (
+                    <>
+                      <div className="text-xs text-white font-medium mb-1">Hennepin County Forfeited Land</div>
+                      <div className="text-[10px] text-[#888] mb-1">612-348-3011</div>
+                      <a href="https://www.hennepin.us/residents/property/forfeited-land" target="_blank" rel="noopener noreferrer" className="text-[10px] text-[#f97316] hover:underline">hennepin.us/forfeited-land →</a>
+                    </>
+                  ) : selected.county === "Dakota" ? (
+                    <>
+                      <div className="text-xs text-white font-medium mb-1">Dakota County Property Taxation</div>
+                      <div className="text-[10px] text-[#888] mb-1">651-438-4576</div>
+                      <div className="text-[10px] text-[#888] mb-1">taxation@co.dakota.mn.us</div>
+                      <a href="https://www.co.dakota.mn.us/HomeProperty/Forfeited" target="_blank" rel="noopener noreferrer" className="text-[10px] text-[#f97316] hover:underline">dakota.mn.us/forfeited →</a>
+                    </>
+                  ) : (
+                    <div className="text-[10px] text-[#555]">Contact the {selected.county} County Auditor/Treasurer</div>
+                  )}
+                </div>
+              </div>
+
               <div className="flex flex-col gap-2">
-                <a href={`https://gis.hennepin.us/property/?pid=${selected.pid}`} target="_blank" rel="noopener noreferrer"
+                <a href={selected.county === "Dakota" ? `https://www.co.dakota.mn.us/HomeProperty/Forfeited` : `https://gis.hennepin.us/property/?pid=${selected.pid}`} target="_blank" rel="noopener noreferrer"
                   className="block w-full text-center py-2.5 bg-[#f97316] text-white text-xs font-semibold rounded-lg hover:bg-[#ea580c]">
-                  View on Hennepin GIS
+                  View on {selected.county} County
                 </a>
                 <a href={`https://maps.google.com/?q=${selected.lat},${selected.lng}`} target="_blank" rel="noopener noreferrer"
                   className="block w-full text-center py-2.5 bg-[#1a1d27] text-[#888] text-xs font-medium rounded-lg hover:text-white border border-[#252833]">
@@ -306,6 +351,7 @@ export default function HomePage() {
               })().map((sliver) => {
                   const scoreInfo = getScoreLabel(sliver.score);
                   const priorityInfo = getPriorityLabel(sliver.priority);
+                  const cost = estimateAcquisitionCost(sliver.market_value);
                   return (
                     <button
                       key={sliver.id}
@@ -327,11 +373,15 @@ export default function HomePage() {
                         </span>
                         <span className="text-[10px] text-[#555]">{sliver.city}</span>
                       </div>
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-3 mb-1">
                         <span className="text-[10px] text-[#888]">📐 <span className="text-white font-medium">{Math.round(sliver.parcel_area)} sq ft</span></span>
-                        <span className="text-[10px] text-[#888]">💰 <span className="text-[#f97316] font-medium">${sliver.tax_total?.toFixed(2)}</span></span>
                         {sliver.priority === 1 && <span className="text-[10px] text-yellow-400">💎</span>}
                         {sliver.owner_name && <span className="text-[10px] text-[#555] truncate">{sliver.owner_name}</span>}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] text-[#888]">Est. cost:</span>
+                        <span className="text-xs font-bold text-[#22c55e]">{formatCost(cost.total)}</span>
+                        {cost.total > 0 && cost.total < 500 && <span className="text-[9px] text-[#22c55e] bg-[#22c55e]/10 px-1.5 py-0.5 rounded">Great deal</span>}
                       </div>
                     </button>
                   );
