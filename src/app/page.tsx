@@ -4,7 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import mapboxgl from "mapbox-gl";
 import { supabase } from "@/lib/supabase";
 import { getScoreLabel, getPriorityLabel, getCountyTier, COUNTY_WEALTH } from "@/lib/scoring";
-import { estimateAcquisitionCost, formatCost } from "@/lib/acquisition";
+import { estimateAcquisitionCost, estimateResaleValue, estimateProfit, formatCost } from "@/lib/acquisition";
+import { COUNTY_WEALTH as CW } from "@/lib/scoring";
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";
 const HENNEPIN_CENTER: [number, number] = [-93.35, 44.96];
@@ -295,6 +296,28 @@ export default function HomePage() {
                 })()}
               </div>
 
+              {/* Estimated Resale & Profit */}
+              {(() => {
+                const c = estimateAcquisitionCost(selected.market_value);
+                const resale = estimateResaleValue(selected.parcel_area, selected.neighbor_left_value, selected.neighbor_right_value, CW[selected.county]?.avgIncome || 100000);
+                const profit = estimateProfit(c.total, resale.mid);
+                return (
+                  <div className="border-t border-[#252833] pt-3 mb-4">
+                    <h4 className="text-xs font-bold text-[#888] uppercase tracking-wider mb-2">Estimated Resale Value</h4>
+                    <div className="bg-[#1a1d27] rounded-lg p-3">
+                      <div className="flex justify-between text-[10px] mb-1"><span className="text-[#888]">Per sq ft range</span><span className="text-white">${(resale.low / selected.parcel_area).toFixed(2)} - ${(resale.high / selected.parcel_area).toFixed(2)}/sqft</span></div>
+                      <div className="flex justify-between text-[10px] mb-1"><span className="text-[#888]">Low estimate</span><span className="text-white">${resale.low.toLocaleString()}</span></div>
+                      <div className="flex justify-between text-[10px] mb-1"><span className="text-[#888]">Mid estimate</span><span className="text-[#f97316] font-medium">${resale.mid.toLocaleString()}</span></div>
+                      <div className="flex justify-between text-[10px] mb-1"><span className="text-[#888]">High estimate</span><span className="text-white">${resale.high.toLocaleString()}</span></div>
+                      <div className="flex justify-between text-xs font-bold mt-2 pt-2 border-t border-[#252833]">
+                        <span className={profit.profit > 0 ? "text-[#22c55e]" : "text-[#ef4444]"}>Est. Profit</span>
+                        <span className={profit.profit > 0 ? "text-[#22c55e]" : "text-[#ef4444]"}>{profit.profit > 0 ? "+" : ""}{formatCost(profit.profit)} ({profit.roi}% ROI)</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+
               {/* County Contact */}
               <div className="border-t border-[#252833] pt-3 mb-4">
                 <h4 className="text-xs font-bold text-[#888] uppercase tracking-wider mb-2">County Contact</h4>
@@ -378,11 +401,19 @@ export default function HomePage() {
                         {sliver.priority === 1 && <span className="text-[10px] text-yellow-400">💎</span>}
                         {sliver.owner_name && <span className="text-[10px] text-[#555] truncate">{sliver.owner_name}</span>}
                       </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-[10px] text-[#888]">Est. cost:</span>
-                        <span className="text-xs font-bold text-[#22c55e]">{formatCost(cost.total)}</span>
-                        {cost.total > 0 && cost.total < 500 && <span className="text-[9px] text-[#22c55e] bg-[#22c55e]/10 px-1.5 py-0.5 rounded">Great deal</span>}
-                      </div>
+                      {(() => {
+                        const resale = estimateResaleValue(sliver.parcel_area, sliver.neighbor_left_value, sliver.neighbor_right_value, CW[sliver.county]?.avgIncome || 100000);
+                        const profit = estimateProfit(cost.total, resale.mid);
+                        return (
+                          <div className="flex items-center gap-3">
+                            <span className="text-[10px] text-[#888]">Cost: <span className="text-white font-medium">{formatCost(cost.total)}</span></span>
+                            <span className="text-[10px] text-[#888]">Sell: <span className="text-[#f97316] font-medium">${resale.low}-${resale.high}</span></span>
+                            <span className={`text-[10px] font-bold ${profit.profit > 0 ? "text-[#22c55e]" : "text-[#ef4444]"}`}>
+                              {profit.profit > 0 ? "+" : ""}{formatCost(profit.profit)}
+                            </span>
+                          </div>
+                        );
+                      })()}
                     </button>
                   );
                 })}
