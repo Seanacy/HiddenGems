@@ -162,20 +162,15 @@ export default function HomePage() {
             onChange={(e) => setCounty(e.target.value)}
             className="w-full mb-3 px-3 py-2 bg-[#1a1d27] border border-[#252833] rounded-lg text-xs text-white focus:outline-none focus:border-[#f97316]"
           >
-            <option value="Hennepin">Hennepin County (Minneapolis)</option>
-            <option value="Ramsey">Ramsey County (St. Paul)</option>
-            <option value="Dakota">Dakota County</option>
-            <option value="Anoka">Anoka County</option>
-            <option value="Washington">Washington County</option>
-            <option value="Scott">Scott County</option>
-            <option value="Carver">Carver County</option>
+            <option value="Hennepin">Hennepin County — Minneapolis, Edina, Plymouth</option>
+            <option value="Dakota">Dakota County — Eagan, Lakeville, Burnsville</option>
           </select>
 
           {/* Stats */}
           <div className="grid grid-cols-3 gap-2 mb-3">
             <div className="bg-[#1a1d27] rounded-lg p-2 text-center">
               <div className="text-lg font-bold text-[#f97316]">{slivers.filter((s) => s.priority === 1).length}</div>
-              <div className="text-[9px] text-[#888]">Forfeited</div>
+              <div className="text-[9px] text-[#888]">Buy Now</div>
             </div>
             <div className="bg-[#1a1d27] rounded-lg p-2 text-center">
               <div className="text-lg font-bold text-[#eab308]">{slivers.filter((s) => s.priority === 2).length}</div>
@@ -195,8 +190,8 @@ export default function HomePage() {
             <div className="grid grid-cols-3 gap-1.5">
               <button onClick={() => setFilter(1)} className={`py-3 rounded-lg text-center transition-colors ${filter === 1 ? "bg-[#f97316] text-white" : "bg-[#1a1d27] text-[#888] hover:text-white"}`}>
                 <div className="text-xs font-bold">P1</div>
-                <div className="text-[8px] mt-0.5 opacity-70">Forfeited</div>
-                <div className="text-[7px] opacity-50">Buy now</div>
+                <div className="text-[8px] mt-0.5 opacity-70">Buy Now</div>
+                <div className="text-[7px] opacity-50">Gov owned</div>
               </button>
               <button onClick={() => setFilter(2)} className={`py-3 rounded-lg text-center transition-colors ${filter === 2 ? "bg-[#eab308] text-white" : "bg-[#1a1d27] text-[#888] hover:text-white"}`}>
                 <div className="text-xs font-bold">P2</div>
