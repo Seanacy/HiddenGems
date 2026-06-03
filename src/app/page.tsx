@@ -201,9 +201,73 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* List */}
+        {/* List or Detail */}
         <div className="flex-1 overflow-y-auto">
-          {loading ? (
+          {selected ? (
+            <div className="p-4">
+              <button onClick={() => setSelected(null)} className="text-xs text-[#888] hover:text-white mb-4">← Back to list</button>
+
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-3xl font-bold" style={{ color: getScoreLabel(selected.score).color }}>{selected.score}</span>
+                <div>
+                  <div className="text-xs font-medium" style={{ color: getScoreLabel(selected.score).color }}>{getScoreLabel(selected.score).label}</div>
+                  <div className="text-[10px]" style={{ color: getPriorityLabel(selected.priority).color }}>{getPriorityLabel(selected.priority).label}</div>
+                </div>
+              </div>
+
+              <h2 className="text-base font-bold text-white mb-3">{selected.address || "No address"}</h2>
+
+              <div className="space-y-2 mb-4">
+                <div className="flex justify-between text-xs"><span className="text-[#888]">PID</span><span className="text-white font-mono text-[10px]">{selected.pid}</span></div>
+                <div className="flex justify-between text-xs"><span className="text-[#888]">City</span><span className="text-white">{selected.city}</span></div>
+                <div className="flex justify-between text-xs"><span className="text-[#888]">Area</span><span className="text-white font-semibold">{Math.round(selected.parcel_area)} sq ft</span></div>
+                <div className="flex justify-between text-xs"><span className="text-[#888]">Owner</span><span className="text-white">{selected.owner_name || "Unknown"}</span></div>
+                <div className="flex justify-between text-xs"><span className="text-[#888]">Taxpayer</span><span className="text-white">{selected.taxpayer_name || "Unknown"}</span></div>
+                <div className="flex justify-between text-xs"><span className="text-[#888]">Tax Owed</span><span className="text-[#f97316] font-semibold">${selected.tax_total?.toFixed(2)}</span></div>
+                <div className="flex justify-between text-xs"><span className="text-[#888]">Tax Paid</span><span className="text-white">${selected.tax_paid?.toFixed(2)}</span></div>
+                <div className="flex justify-between text-xs"><span className="text-[#888]">Market Value</span><span className="text-white">${selected.market_value?.toLocaleString()}</span></div>
+                {selected.forfeit_land && <div className="flex justify-between text-xs"><span className="text-[#888]">Forfeited</span><span className="text-[#f97316] font-bold">YES</span></div>}
+                {selected.earliest_delinquent_year && <div className="flex justify-between text-xs"><span className="text-[#888]">Delinquent Since</span><span className="text-[#eab308]">20{selected.earliest_delinquent_year}</span></div>}
+                {selected.sale_price > 0 && <div className="flex justify-between text-xs"><span className="text-[#888]">Last Sale</span><span className="text-white">${selected.sale_price?.toLocaleString()}</span></div>}
+              </div>
+
+              <div className="border-t border-[#252833] pt-3 mb-4">
+                <h4 className="text-xs font-bold text-[#888] uppercase tracking-wider mb-2">Neighbors (Potential Buyers)</h4>
+                {selected.neighbor_left_name ? (
+                  <div className="bg-[#1a1d27] rounded-lg p-3 mb-2">
+                    <div className="text-xs text-white font-medium">{selected.neighbor_left_name}</div>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="text-[10px] text-[#f97316]">${selected.neighbor_left_value?.toLocaleString()}</span>
+                      {selected.neighbor_left_homestead && <span className="text-[10px] text-green-400">Homesteaded</span>}
+                    </div>
+                  </div>
+                ) : null}
+                {selected.neighbor_right_name ? (
+                  <div className="bg-[#1a1d27] rounded-lg p-3">
+                    <div className="text-xs text-white font-medium">{selected.neighbor_right_name}</div>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className="text-[10px] text-[#f97316]">${selected.neighbor_right_value?.toLocaleString()}</span>
+                      {selected.neighbor_right_homestead && <span className="text-[10px] text-green-400">Homesteaded</span>}
+                    </div>
+                  </div>
+                ) : null}
+                {!selected.neighbor_left_name && !selected.neighbor_right_name && (
+                  <p className="text-[10px] text-[#555]">Neighbor data not loaded yet. Re-scan to populate.</p>
+                )}
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <a href={`https://gis.hennepin.us/property/?pid=${selected.pid}`} target="_blank" rel="noopener noreferrer"
+                  className="block w-full text-center py-2.5 bg-[#f97316] text-white text-xs font-semibold rounded-lg hover:bg-[#ea580c]">
+                  View on Hennepin GIS
+                </a>
+                <a href={`https://maps.google.com/?q=${selected.lat},${selected.lng}`} target="_blank" rel="noopener noreferrer"
+                  className="block w-full text-center py-2.5 bg-[#1a1d27] text-[#888] text-xs font-medium rounded-lg hover:text-white border border-[#252833]">
+                  Open in Google Maps
+                </a>
+              </div>
+            </div>
+          ) : loading ? (
             <div className="p-8 text-center text-[#555] text-sm">Loading...</div>
           ) : slivers.length === 0 ? (
             <div className="p-8 text-center">
@@ -238,12 +302,16 @@ export default function HomePage() {
                         <span className="text-xs font-medium text-white truncate">{sliver.address || sliver.pid}</span>
                         <span className="text-xs font-bold" style={{ color: scoreInfo.color }}>{sliver.score}</span>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 mb-1.5">
                         <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ backgroundColor: priorityInfo.color + "22", color: priorityInfo.color }}>
                           {priorityInfo.label}
                         </span>
-                        <span className="text-[10px] text-[#555]">{Math.round(sliver.parcel_area)} sq ft</span>
                         <span className="text-[10px] text-[#555]">{sliver.city}</span>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="text-[10px] text-[#888]">📐 <span className="text-white font-medium">{Math.round(sliver.parcel_area)} sq ft</span></span>
+                        <span className="text-[10px] text-[#888]">💰 <span className="text-[#f97316] font-medium">${sliver.tax_total?.toFixed(2)}</span></span>
+                        {sliver.owner_name && <span className="text-[10px] text-[#555] truncate">{sliver.owner_name}</span>}
                       </div>
                     </button>
                   );
@@ -257,118 +325,7 @@ export default function HomePage() {
       <div className="flex-1 relative">
         <div ref={mapContainerRef} className="w-full h-full" />
 
-        {/* Detail panel */}
-        {selected && (
-          <div className="absolute top-4 right-4 w-[340px] bg-[#0f1117] border border-[#252833] rounded-xl shadow-2xl overflow-hidden z-10">
-            <div className="flex items-center justify-between p-4 border-b border-[#252833]">
-              <h3 className="text-sm font-bold text-white">Parcel Detail</h3>
-              <button onClick={() => setSelected(null)} className="text-[#555] hover:text-white text-xs">✕</button>
-            </div>
-
-            <div className="p-4 max-h-[60vh] overflow-y-auto">
-              {/* Score + Priority */}
-              <div className="flex items-center gap-2 mb-4">
-                <span className="text-3xl font-bold" style={{ color: getScoreLabel(selected.score).color }}>
-                  {selected.score}
-                </span>
-                <div>
-                  <div className="text-xs font-medium" style={{ color: getScoreLabel(selected.score).color }}>
-                    {getScoreLabel(selected.score).label}
-                  </div>
-                  <div className="text-[10px]" style={{ color: getPriorityLabel(selected.priority).color }}>
-                    {getPriorityLabel(selected.priority).label}
-                  </div>
-                </div>
-              </div>
-
-              {/* Parcel info */}
-              <div className="space-y-2 mb-4">
-                <div className="flex justify-between text-xs">
-                  <span className="text-[#888]">PID</span>
-                  <span className="text-white font-mono">{selected.pid}</span>
-                </div>
-                <div className="flex justify-between text-xs">
-                  <span className="text-[#888]">Address</span>
-                  <span className="text-white">{selected.address}</span>
-                </div>
-                <div className="flex justify-between text-xs">
-                  <span className="text-[#888]">City</span>
-                  <span className="text-white">{selected.city}</span>
-                </div>
-                <div className="flex justify-between text-xs">
-                  <span className="text-[#888]">Area</span>
-                  <span className="text-white">{Math.round(selected.parcel_area)} sq ft</span>
-                </div>
-                <div className="flex justify-between text-xs">
-                  <span className="text-[#888]">Owner</span>
-                  <span className="text-white">{selected.owner_name || "Unknown"}</span>
-                </div>
-                <div className="flex justify-between text-xs">
-                  <span className="text-[#888]">Tax Owed</span>
-                  <span className="text-[#f97316] font-semibold">${selected.tax_total?.toFixed(2)}</span>
-                </div>
-                <div className="flex justify-between text-xs">
-                  <span className="text-[#888]">Market Value</span>
-                  <span className="text-white">${selected.market_value?.toLocaleString()}</span>
-                </div>
-                {selected.earliest_delinquent_year && (
-                  <div className="flex justify-between text-xs">
-                    <span className="text-[#888]">Delinquent Since</span>
-                    <span className="text-[#eab308]">20{selected.earliest_delinquent_year}</span>
-                  </div>
-                )}
-              </div>
-
-              {/* Neighbors */}
-              <div className="border-t border-[#252833] pt-3 mb-4">
-                <h4 className="text-xs font-bold text-[#888] uppercase tracking-wider mb-2">Neighbors (Potential Buyers)</h4>
-                {selected.neighbor_left_name && (
-                  <div className="bg-[#1a1d27] rounded-lg p-3 mb-2">
-                    <div className="text-xs text-white font-medium">{selected.neighbor_left_name}</div>
-                    <div className="flex items-center gap-2 mt-1">
-                      <span className="text-[10px] text-[#f97316]">${selected.neighbor_left_value?.toLocaleString()}</span>
-                      {selected.neighbor_left_homestead && (
-                        <span className="text-[10px] text-green-400">Homesteaded</span>
-                      )}
-                    </div>
-                  </div>
-                )}
-                {selected.neighbor_right_name && (
-                  <div className="bg-[#1a1d27] rounded-lg p-3">
-                    <div className="text-xs text-white font-medium">{selected.neighbor_right_name}</div>
-                    <div className="flex items-center gap-2 mt-1">
-                      <span className="text-[10px] text-[#f97316]">${selected.neighbor_right_value?.toLocaleString()}</span>
-                      {selected.neighbor_right_homestead && (
-                        <span className="text-[10px] text-green-400">Homesteaded</span>
-                      )}
-                    </div>
-                  </div>
-                )}
-                {!selected.neighbor_left_name && !selected.neighbor_right_name && (
-                  <p className="text-[10px] text-[#555]">Neighbor data not yet loaded. Re-scan to populate.</p>
-                )}
-              </div>
-
-              {/* Actions */}
-              <a
-                href={`https://gis.hennepin.us/property/?pid=${selected.pid}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="block w-full text-center py-2.5 bg-[#f97316] text-white text-xs font-semibold rounded-lg hover:bg-[#ea580c] mb-2"
-              >
-                View on Hennepin GIS
-              </a>
-              <a
-                href={`https://maps.google.com/?q=${selected.lat},${selected.lng}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="block w-full text-center py-2.5 bg-[#1a1d27] text-[#888] text-xs font-medium rounded-lg hover:text-white border border-[#252833]"
-              >
-                Open in Google Maps
-              </a>
-            </div>
-          </div>
-        )}
+        {/* No floating detail panel — detail is now in sidebar */}
       </div>
     </div>
   );
