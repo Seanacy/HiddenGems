@@ -214,7 +214,7 @@ export default function HomePage() {
           ) : (
             <div className="flex flex-col">
               <div className="px-4 py-2 text-[10px] text-[#555]">{filteredCount} parcels</div>
-              {(filter === "all" ? slivers : slivers.filter((s) => s.priority === filter))
+              {[...(filter === "all" ? slivers : slivers.filter((s) => s.priority === filter))]
                 .sort((a, b) => {
                   if (sortBy === "score") return b.score - a.score;
                   if (sortBy === "area") return a.parcel_area - b.parcel_area;
