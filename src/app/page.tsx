@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import mapboxgl from "mapbox-gl";
 import { supabase } from "@/lib/supabase";
-import { getScoreLabel, getPriorityLabel } from "@/lib/scoring";
+import { getScoreLabel, getPriorityLabel, getCountyTier, COUNTY_WEALTH } from "@/lib/scoring";
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";
 const HENNEPIN_CENTER: [number, number] = [-93.35, 44.96];
@@ -160,11 +160,21 @@ export default function HomePage() {
           <select
             value={county}
             onChange={(e) => setCounty(e.target.value)}
-            className="w-full mb-3 px-3 py-2 bg-[#1a1d27] border border-[#252833] rounded-lg text-xs text-white focus:outline-none focus:border-[#f97316]"
+            className="w-full mb-2 px-3 py-2 bg-[#1a1d27] border border-[#252833] rounded-lg text-xs text-white focus:outline-none focus:border-[#f97316]"
           >
-            <option value="Hennepin">Hennepin County — Minneapolis, Edina, Plymouth</option>
-            <option value="Dakota">Dakota County — Eagan, Lakeville, Burnsville</option>
+            <option value="Hennepin">🥈 Hennepin — Minneapolis, Edina, Plymouth ($138K)</option>
+            <option value="Dakota">🥈 Dakota — Eagan, Lakeville, Burnsville ($131K)</option>
           </select>
+          {COUNTY_WEALTH[county] && (
+            <div className={`flex items-center gap-2 mb-3 px-3 py-1.5 rounded-lg text-[10px] ${
+              getCountyTier(county) === "gold" ? "bg-yellow-500/10 text-yellow-400" :
+              getCountyTier(county) === "silver" ? "bg-gray-400/10 text-gray-300" :
+              "bg-orange-500/10 text-orange-300"
+            }`}>
+              <span className="font-bold">{getCountyTier(county) === "gold" ? "💎" : getCountyTier(county) === "silver" ? "⭐" : "🔹"}</span>
+              <span>Avg income ${(COUNTY_WEALTH[county].avgIncome / 1000).toFixed(0)}K • Median ${(COUNTY_WEALTH[county].medianIncome / 1000).toFixed(0)}K • Score bonus +{getCountyTier(county) === "gold" ? "15" : getCountyTier(county) === "silver" ? "10" : "5"}</span>
+            </div>
+          )}
 
           {/* Stats */}
           <div className="grid grid-cols-3 gap-2 mb-3">
@@ -320,6 +330,7 @@ export default function HomePage() {
                       <div className="flex items-center gap-3">
                         <span className="text-[10px] text-[#888]">📐 <span className="text-white font-medium">{Math.round(sliver.parcel_area)} sq ft</span></span>
                         <span className="text-[10px] text-[#888]">💰 <span className="text-[#f97316] font-medium">${sliver.tax_total?.toFixed(2)}</span></span>
+                        {sliver.priority === 1 && <span className="text-[10px] text-yellow-400">💎</span>}
                         {sliver.owner_name && <span className="text-[10px] text-[#555] truncate">{sliver.owner_name}</span>}
                       </div>
                     </button>

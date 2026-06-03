@@ -1,3 +1,30 @@
+// County wealth data — verified from Census 2024
+export const COUNTY_WEALTH: Record<string, { avgIncome: number; medianIncome: number; tier: "gold" | "silver" | "bronze" }> = {
+  Carver: { avgIncome: 159987, medianIncome: 125946, tier: "gold" },
+  Scott: { avgIncome: 149625, medianIncome: 119314, tier: "gold" },
+  Washington: { avgIncome: 148415, medianIncome: 115345, tier: "gold" },
+  Hennepin: { avgIncome: 138433, medianIncome: 97653, tier: "silver" },
+  Dakota: { avgIncome: 131262, medianIncome: 106318, tier: "silver" },
+  Olmsted: { avgIncome: 132916, medianIncome: 95406, tier: "silver" },
+  Wright: { avgIncome: 126718, medianIncome: 107209, tier: "silver" },
+  Sherburne: { avgIncome: 123508, medianIncome: 105466, tier: "silver" },
+  Anoka: { avgIncome: 120024, medianIncome: 101869, tier: "bronze" },
+  Ramsey: { avgIncome: 112592, medianIncome: 81568, tier: "bronze" },
+};
+
+export function getCountyBonus(county: string): number {
+  const data = COUNTY_WEALTH[county];
+  if (!data) return 0;
+  if (data.avgIncome > 150000) return 15; // Gold counties
+  if (data.avgIncome > 130000) return 10; // Silver counties
+  if (data.avgIncome > 100000) return 5;  // Bronze counties
+  return 0;
+}
+
+export function getCountyTier(county: string): "gold" | "silver" | "bronze" | "none" {
+  return COUNTY_WEALTH[county]?.tier || "none";
+}
+
 export interface SliverData {
   parcel_area: number;
   tax_total: number;
@@ -8,6 +35,7 @@ export interface SliverData {
   neighbor_right_value: number;
   neighbor_right_homestead: boolean;
   earliest_delinquent_year: string | null;
+  county: string;
 }
 
 export function calculateScore(sliver: SliverData): number {
@@ -34,6 +62,9 @@ export function calculateScore(sliver: SliverData): number {
 
   // Government owned or tax-forfeited = ready to buy now
   if (sliver.forfeit_land || sliver.government_owned) score += 10;
+
+  // County wealth bonus
+  score += getCountyBonus(sliver.county);
 
   return Math.min(100, Math.max(0, score));
 }

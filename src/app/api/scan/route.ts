@@ -148,6 +148,7 @@ export async function GET(request: Request) {
         neighbor_right_value: 0,
         neighbor_right_homestead: false,
         earliest_delinquent_year: delinquentYear,
+        county,
       });
 
       slivers.push({
