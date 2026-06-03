@@ -7,13 +7,22 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
-const GIS_URL = process.env.HENNEPIN_GIS_URL || "https://gis.hennepin.us/arcgis/rest/services/HennepinData/LAND_PROPERTY/MapServer/1/query";
+// County GIS endpoints — each county publishes parcel data through ArcGIS
+const COUNTY_GIS: Record<string, string> = {
+  Hennepin: "https://gis.hennepin.us/arcgis/rest/services/HennepinData/LAND_PROPERTY/MapServer/1/query",
+  Ramsey: "https://maps.co.ramsey.mn.us/arcgis/rest/services/MapRamsey/MapServer/44/query",
+  Dakota: "https://gis.co.dakota.mn.us/arcgis/rest/services/publicViewer/MapServer/0/query",
+  Anoka: "https://maps.co.anoka.mn.us/arcgis/rest/services/publicViewer/MapServer/0/query",
+  Washington: "https://gis.co.washington.mn.us/arcgis/rest/services/publicViewer/MapServer/0/query",
+  Scott: "https://maps.co.scott.mn.us/arcgis/rest/services/publicViewer/MapServer/0/query",
+  Carver: "https://gis.co.carver.mn.us/arcgis/rest/services/publicViewer/MapServer/0/query",
+};
 
 interface GISFeature {
   attributes: Record<string, unknown>;
 }
 
-async function fetchSlivers(): Promise<GISFeature[]> {
+async function fetchSlivers(gisUrl: string = COUNTY_GIS.Hennepin): Promise<GISFeature[]> {
   // Query for small parcels with no buildings
   // PARCEL_AREA is in sq ft, BLDG_MV1 = 0 means no building
   const params = new URLSearchParams({
@@ -30,7 +39,7 @@ async function fetchSlivers(): Promise<GISFeature[]> {
 
   while (hasMore) {
     params.set("resultOffset", offset.toString());
-    const res = await fetch(`${GIS_URL}?${params}`, { signal: AbortSignal.timeout(30000) });
+    const res = await fetch(`${gisUrl}?${params}`, { signal: AbortSignal.timeout(30000) });
     const data = await res.json();
 
     if (data.features && data.features.length > 0) {
@@ -45,7 +54,7 @@ async function fetchSlivers(): Promise<GISFeature[]> {
   return allFeatures;
 }
 
-async function fetchNeighbors(lat: number, lon: number): Promise<GISFeature[]> {
+async function fetchNeighbors(lat: number, lon: number, gisUrl: string = COUNTY_GIS.Hennepin): Promise<GISFeature[]> {
   // Find parcels near this point (within ~30 meters)
   const params = new URLSearchParams({
     geometry: JSON.stringify({ x: lon, y: lat, spatialReference: { wkid: 4326 } }),
@@ -61,7 +70,7 @@ async function fetchNeighbors(lat: number, lon: number): Promise<GISFeature[]> {
   });
 
   try {
-    const res = await fetch(`${GIS_URL}?${params}`, { signal: AbortSignal.timeout(15000) });
+    const res = await fetch(`${gisUrl}?${params}`, { signal: AbortSignal.timeout(15000) });
     const data = await res.json();
     return data.features || [];
   } catch {
@@ -69,10 +78,14 @@ async function fetchNeighbors(lat: number, lon: number): Promise<GISFeature[]> {
   }
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const { searchParams } = new URL(request.url);
+    const county = searchParams.get("county") || "Hennepin";
+    const gisUrl = COUNTY_GIS[county] || COUNTY_GIS.Hennepin;
+
     // Step 1: Fetch all small parcels
-    const features = await fetchSlivers();
+    const features = await fetchSlivers(gisUrl);
 
     if (features.length === 0) {
       return NextResponse.json({ message: "No slivers found", count: 0 });
@@ -97,7 +110,7 @@ export async function GET() {
       let neighborRight = { name: "", value: 0, homestead: false };
 
       if (slivers.length < 50) {
-        const neighbors = await fetchNeighbors(lat, lon);
+        const neighbors = await fetchNeighbors(lat, lon, gisUrl);
         const adjacentParcels = neighbors.filter(
           (n) => (n.attributes.PID as string) !== pid && (n.attributes.BLDG_MV1 as number) > 0
         );
@@ -164,7 +177,7 @@ export async function GET() {
         neighbor_right_name: neighborRight.name,
         neighbor_right_value: neighborRight.value,
         neighbor_right_homestead: neighborRight.homestead,
-        county: "Hennepin",
+        county,
         raw_data: a,
         last_synced: new Date().toISOString(),
       });
