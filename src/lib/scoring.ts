@@ -233,8 +233,10 @@ export function estimateRentalIncome(
   return { low: baseLow, high: baseHigh, seasonal };
 }
 
-export function getRentalScoreLabel(score: number): { label: string; color: string } {
-  if (score >= 60) return { label: "Prime Rental", color: "#22c55e" };
+export function getRentalScoreLabel(score: number, nearMajorRoad: boolean): { label: string; color: string } {
+  // Prime Rental REQUIRES road proximity — that's the whole point
+  if (score >= 60 && nearMajorRoad) return { label: "Prime Rental", color: "#22c55e" };
+  if (nearMajorRoad) return { label: "Roadside", color: "#3b82f6" };
   if (score >= 35) return { label: "Rentable", color: "#f59e0b" };
   return { label: "Flip Only", color: "#ef4444" };
 }

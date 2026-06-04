@@ -296,9 +296,9 @@ export default function HomePage() {
                 </div>
               ) : (
                 <div className="flex items-center gap-2 mb-3">
-                  <span className="text-3xl font-bold" style={{ color: getRentalScoreLabel(selected.rental_score || 0).color }}>{selected.rental_score || 0}</span>
+                  <span className="text-3xl font-bold" style={{ color: getRentalScoreLabel(selected.rental_score || 0, selected.near_major_road).color }}>{selected.rental_score || 0}</span>
                   <div>
-                    <div className="text-xs font-medium" style={{ color: getRentalScoreLabel(selected.rental_score || 0).color }}>{getRentalScoreLabel(selected.rental_score || 0).label}</div>
+                    <div className="text-xs font-medium" style={{ color: getRentalScoreLabel(selected.rental_score || 0, selected.near_major_road).color }}>{getRentalScoreLabel(selected.rental_score || 0, selected.near_major_road).label}</div>
                     <div className="text-[10px]" style={{ color: getPriorityLabel(selected.priority).color }}>{getPriorityLabel(selected.priority).label}</div>
                     {selected.near_major_road && <div className="text-[10px] text-[#22c55e] font-semibold">Near Major Road</div>}
                   </div>
@@ -531,7 +531,7 @@ export default function HomePage() {
 
                 if (mode === "rent") {
                   // RENT MODE LIST ITEM
-                  const rentalInfo = getRentalScoreLabel(sliver.rental_score || 0);
+                  const rentalInfo = getRentalScoreLabel(sliver.rental_score || 0, sliver.near_major_road);
                   const annualTax = sliver.estimated_annual_tax || estimateAnnualTax(sliver.market_value);
                   return (
                     <button
