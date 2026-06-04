@@ -116,3 +116,125 @@ export function getPriorityLabel(priority: number): { label: string; color: stri
   if (priority === 2) return { label: "Delinquent 5yr+", color: "#eab308" };
   return { label: "Flagged", color: "#6b7280" };
 }
+
+// ============================================================
+// RENTAL SCORING — sign rental / passive income potential
+// ============================================================
+
+// Major road keywords — parcels on these are more visible for signs
+const MAJOR_ROAD_KEYWORDS = [
+  // Road types that indicate busy streets
+  "hwy", "highway", "blvd", "boulevard", "pkwy", "parkway", "fwy", "freeway",
+  "county rd", "county road", "cr ",
+  // Known metro-area busy roads — Hennepin
+  "hennepin ave", "lake st", "broadway", "university ave", "lyndale ave",
+  "nicollet ave", "france ave", "penn ave", "portland ave", "cedar ave",
+  "chicago ave", "excelsior blvd", "minnetonka blvd", "wayzata blvd",
+  "66th st", "76th st", "36th st", "42nd st", "50th st", "54th st",
+  "lowry ave", "plymouth ave", "olson memorial", "glenwood ave",
+  "washington ave", "franklin ave", "american blvd",
+  // Known metro-area busy roads — Dakota
+  "cliff rd", "diffley rd", "pilot knob", "dodd blvd", "dodd rd",
+  "yankee doodle", "150th st", "140th st", "cedar ave", "galaxie ave",
+  "vermillion st", "robert st", "concord st",
+];
+
+export function isNearMajorRoad(address: string): boolean {
+  if (!address || address === "No address") return false;
+  const lower = address.toLowerCase().trim();
+  return MAJOR_ROAD_KEYWORDS.some((road) => lower.includes(road));
+}
+
+// Extract road name from address for display
+export function extractRoadName(address: string): string {
+  if (!address || address === "No address") return "";
+  // Remove house number prefix
+  return address.replace(/^\d+\s+/, "").trim();
+}
+
+export interface RentalSliverData {
+  parcel_area: number;
+  market_value: number;
+  address: string;
+  forfeit_land: boolean;
+  government_owned: boolean;
+  county: string;
+  near_major_road?: boolean; // override if already calculated
+}
+
+export function calculateRentalScore(sliver: RentalSliverData): number {
+  let score = 0;
+
+  // Road proximity — the #1 factor for sign rental
+  const nearRoad = sliver.near_major_road ?? isNearMajorRoad(sliver.address);
+  if (nearRoad) score += 35;
+
+  // Has a real address (findable, identifiable, probably road-facing)
+  if (sliver.address && sliver.address !== "No address") score += 10;
+
+  // Parcel size — bigger = more sign space, more visible
+  if (sliver.parcel_area >= 400) score += 15;
+  else if (sliver.parcel_area >= 200) score += 10;
+  else if (sliver.parcel_area >= 100) score += 5;
+
+  // Government owned or forfeited = available to buy now
+  if (sliver.forfeit_land || sliver.government_owned) score += 15;
+
+  // Low market value = cheap to buy = better ROI
+  if (sliver.market_value <= 100) score += 10;
+  else if (sliver.market_value <= 300) score += 5;
+
+  // County wealth bonus — wealthier areas = more businesses, campaigns, realtors
+  score += getCountyBonus(sliver.county);
+
+  return Math.min(100, Math.max(0, score));
+}
+
+// Estimate annual property tax based on real data from MN slivers
+// Based on our DB query: $100 market value → ~$2-4/yr, $300 → $4-6/yr, $1000 → $15-20/yr
+export function estimateAnnualTax(marketValue: number): number {
+  if (marketValue <= 0) return 2; // minimum
+  // Effective rate ~1.5-2% for small parcels, with $2 floor
+  const rate = marketValue < 500 ? 0.02 : 0.015;
+  return Math.max(2, Math.round(marketValue * rate * 100) / 100);
+}
+
+// Estimate monthly sign rental income based on location quality
+export function estimateRentalIncome(
+  nearMajorRoad: boolean,
+  parcelArea: number,
+  county: string
+): { low: number; high: number; seasonal: string } {
+  const tier = getCountyTier(county);
+  let baseLow: number;
+  let baseHigh: number;
+
+  if (nearMajorRoad) {
+    // High-visibility roadside parcel
+    if (tier === "gold") { baseLow = 75; baseHigh = 200; }
+    else if (tier === "silver") { baseLow = 50; baseHigh = 150; }
+    else { baseLow = 40; baseHigh = 100; }
+  } else {
+    // Has address but not on a known major road — still some value
+    if (tier === "gold") { baseLow = 25; baseHigh = 75; }
+    else if (tier === "silver") { baseLow = 15; baseHigh = 50; }
+    else { baseLow = 10; baseHigh = 35; }
+  }
+
+  // Size bonus — bigger parcels can fit bigger signs
+  if (parcelArea >= 400) {
+    baseLow = Math.round(baseLow * 1.3);
+    baseHigh = Math.round(baseHigh * 1.3);
+  }
+
+  // Election season estimate (3-4 months every 2 years, but also primaries)
+  const seasonal = nearMajorRoad ? "Campaign season: $100-300/spot" : "Campaign season: $50-150/spot";
+
+  return { low: baseLow, high: baseHigh, seasonal };
+}
+
+export function getRentalScoreLabel(score: number): { label: string; color: string } {
+  if (score >= 60) return { label: "Prime Rental", color: "#22c55e" };
+  if (score >= 35) return { label: "Rentable", color: "#f59e0b" };
+  return { label: "Flip Only", color: "#ef4444" };
+}

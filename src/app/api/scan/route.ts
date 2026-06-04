@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { calculateScore, getPriority, isGovernmentOwned } from "@/lib/scoring";
+import { calculateScore, getPriority, isGovernmentOwned, calculateRentalScore, isNearMajorRoad, extractRoadName, estimateAnnualTax, estimateRentalIncome } from "@/lib/scoring";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -151,6 +151,21 @@ export async function GET(request: Request) {
         county,
       });
 
+      // Rental scoring
+      const nearRoad = isNearMajorRoad(address);
+      const rentalScore = calculateRentalScore({
+        parcel_area: parcelArea,
+        market_value: marketValue,
+        address,
+        forfeit_land: forfeitFlag,
+        government_owned: governmentOwned,
+        county,
+        near_major_road: nearRoad,
+      });
+      const annualTax = estimateAnnualTax(marketValue);
+      const rentalIncome = estimateRentalIncome(nearRoad, parcelArea, county);
+      const roadName = extractRoadName(address);
+
       slivers.push({
         pid,
         owner_name: ownerName,
@@ -181,6 +196,13 @@ export async function GET(request: Request) {
         county,
         raw_data: a,
         last_synced: new Date().toISOString(),
+        // Rental fields
+        rental_score: rentalScore,
+        near_major_road: nearRoad,
+        estimated_annual_tax: annualTax,
+        rental_income_low: rentalIncome.low,
+        rental_income_high: rentalIncome.high,
+        road_name: roadName,
       });
     }
 
@@ -202,6 +224,8 @@ export async function GET(request: Request) {
       delinquent: slivers.filter((s) => s.priority === 2).length,
       flagged: slivers.filter((s) => s.priority === 3).length,
       high_score: slivers.filter((s) => s.score >= 70).length,
+      near_roads: slivers.filter((s) => s.near_major_road).length,
+      prime_rentals: slivers.filter((s) => s.rental_score >= 60).length,
     });
   } catch (err) {
     return NextResponse.json(
